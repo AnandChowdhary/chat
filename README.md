@@ -45,7 +45,7 @@ The workflow supports all models available in the GitHub AI catalog, including:
 - `openai/o3` - Enhanced quality and safety model
 - And many more...
 
-To see all available models, comment "update labels" in any issue.
+To see all available models, see the [repository labels](https://github.com/AnandChowdhary/chat/labels) or the [official API endpoint](https://models.github.ai/catalog/models).
 
 ## How it works
 
@@ -61,6 +61,9 @@ To see all available models, comment "update labels" in any issue.
    - Maintains consistent label styling
    - Handles errors gracefully
    - Provides helpful error messages
+
+Workflow: [`.github/workflows/chat.yml`](./.github/workflows/chat.yml)
+System prompt: [`system-prompt.md`](./system-prompt.md)
 
 ## License
 
