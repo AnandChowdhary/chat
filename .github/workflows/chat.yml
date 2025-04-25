@@ -63,6 +63,50 @@ jobs:
               }
             }
 
+            // Get available models from catalog
+            const catalogResponse = await fetch('https://models.github.ai/catalog/models', {
+              headers: {
+                'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`
+              }
+            });
+
+            if (!catalogResponse.ok) {
+              throw new Error(`Failed to fetch model catalog: ${catalogResponse.status}`);
+            }
+
+            const catalog = await catalogResponse.json();
+            const availableModels = catalog.map(model => model.id);
+
+            // Determine which model to use based on labels
+            const defaultModel = 'openai/gpt-4.1';
+            const modelLabel = context.payload.issue.labels.find(label => label.name.startsWith('openai/'));
+            const requestedModel = modelLabel ? modelLabel.name : defaultModel;
+
+            // Add default model label if no model label is present
+            if (!modelLabel) {
+              console.log(`Adding default model label: ${defaultModel}`);
+              await github.rest.issues.addLabels({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                labels: [defaultModel]
+              });
+            }
+
+            // Validate the model
+            if (!availableModels.includes(requestedModel)) {
+              console.log(`Requested model ${requestedModel} not found in catalog. Available models: ${availableModels.join(', ')}`);
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `Sorry, the model "${requestedModel}" is not available. Please use one of these models: ${availableModels.join(', ')}`
+              });
+              return;
+            }
+
+            console.log(`Using model: ${requestedModel}`);
+
             try {
               const response = await fetch('https://models.github.ai/inference/chat/completions', {
                 method: 'POST',
@@ -72,7 +116,7 @@ jobs:
                 },
                 body: JSON.stringify({
                   messages,
-                  model: 'openai/gpt-4o'
+                  model: requestedModel
                 })
               });
               
@@ -99,3 +143,8 @@ jobs:
                 body: `Sorry, I encountered an error: ${error.message}`
               });
             }
+
+      - name: Color all labels
+        uses: AnandChowdhary/color-labels-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
