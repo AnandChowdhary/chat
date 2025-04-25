@@ -145,6 +145,6 @@ jobs:
             }
 
       - name: Color all labels
-        uses: AnandChowdhary/color-labels-action@v1
+        uses: AnandChowdhary/color-labels-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
