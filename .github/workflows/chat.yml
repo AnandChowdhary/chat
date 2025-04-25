@@ -79,7 +79,7 @@ jobs:
 
             // Determine which model to use based on labels
             const defaultModel = 'openai/gpt-4.1';
-            const modelLabel = context.payload.issue.labels.find(label => label.name.startsWith('openai/'));
+            const modelLabel = context.payload.issue.labels.find(label => availableModels.includes(label.name));
             const requestedModel = modelLabel ? modelLabel.name : defaultModel;
 
             // Add default model label if no model label is present
@@ -91,18 +91,6 @@ jobs:
                 repo: context.repo.repo,
                 labels: [defaultModel]
               });
-            }
-
-            // Validate the model
-            if (!availableModels.includes(requestedModel)) {
-              console.log(`Requested model ${requestedModel} not found in catalog. Available models: ${availableModels.join(', ')}`);
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: `Sorry, the model "${requestedModel}" is not available. Please use one of these models: ${availableModels.join(', ')}`
-              });
-              return;
             }
 
             console.log(`Using model: ${requestedModel}`);
