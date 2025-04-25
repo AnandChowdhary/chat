@@ -13,14 +13,8 @@ permissions:
 jobs:
   ai:
     runs-on: ubuntu-latest
-    outputs:
-      response: ${{ steps.generate.outputs.response }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Get conversation history
-        id: history
+      - name: Process and respond
         uses: actions/github-script@v7
         with:
           script: |
@@ -58,38 +52,24 @@ jobs:
               }
             }
 
-            if (context.eventName === 'issue_comment') {
-              messages.push({
-                role: 'user',
-                content: context.payload.comment.body
-              });
-            }
+            const response = await fetch('https://models.github.ai/inference/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`
+              },
+              body: JSON.stringify({
+                messages,
+                model: 'openai/gpt-4o'
+              })
+            });
 
-            return JSON.stringify(messages);
+            const data = await response.json();
+            const aiResponse = data.choices[0].message.content;
 
-      - name: Generate chat completion
-        id: generate
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          RESPONSE=$(curl "https://models.github.ai/inference/chat/completions" \
-          -H "Content-Type: application/json" \
-          -H "Authorization: Bearer $GITHUB_TOKEN" \
-          -d '{
-              "messages": '${{ steps.history.outputs.result }}',
-              "model": "openai/gpt-4o"
-          }' | jq -r '.choices[0].message.content')
-          echo "response<<EOF" >> $GITHUB_OUTPUT
-          echo "$RESPONSE" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Comment on issue
-        uses: actions/github-script@v7
-        with:
-          script: |
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '${{ steps.generate.outputs.response }}'
+              body: aiResponse
             });
