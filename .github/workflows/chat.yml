@@ -3,6 +3,8 @@ name: Chat
 on:
   issues:
     types: [opened]
+  issue_comment:
+    types: [created]
 
 permissions:
   models: read
@@ -17,34 +19,63 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Get conversation history
+        id: history
+        uses: actions/github-script@v7
         with:
-          node-version: "20"
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
 
-      - name: Install dependencies
-        run: npm install @octokit/action
+            const messages = [];
+
+            const systemPrompt = fs.readFileSync('system-prompt.md', 'utf8');
+            messages.push({
+              role: 'system',
+              content: systemPrompt
+            });
+
+            messages.push({
+              role: 'user',
+              content: context.payload.issue.title
+            });
+
+            for (const comment of comments) {
+              if (comment.user.login === 'github-actions[bot]') {
+                messages.push({
+                  role: 'assistant',
+                  content: comment.body
+                });
+              } else {
+                messages.push({
+                  role: 'user',
+                  content: comment.body
+                });
+              }
+            }
+
+            if (context.eventName === 'issue_comment') {
+              messages.push({
+                role: 'user',
+                content: context.payload.comment.body
+              });
+            }
+
+            return JSON.stringify(messages);
 
       - name: Generate chat completion
         id: generate
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          SYSTEM_PROMPT=$(cat system-prompt.md | jq -Rs .)
           RESPONSE=$(curl "https://models.github.ai/inference/chat/completions" \
           -H "Content-Type: application/json" \
           -H "Authorization: Bearer $GITHUB_TOKEN" \
           -d '{
-              "messages": [
-                  {
-                      "role": "system",
-                      "content": '"$SYSTEM_PROMPT"'
-                  },
-                  {
-                      "role": "user",
-                      "content": "${{ github.event.issue.title }}"
-                  }
-              ],
+              "messages": '${{ steps.history.outputs.result }}',
               "model": "openai/gpt-4o"
           }' | jq -r '.choices[0].message.content')
           echo "response<<EOF" >> $GITHUB_OUTPUT
