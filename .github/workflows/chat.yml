@@ -17,6 +17,62 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Create model labels
+        uses: actions/github-script@v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          script: |
+            // Skip if not requested
+            if (context.eventName !== 'issue_comment' || !context.payload.comment.body.toLowerCase().includes('update labels')) {
+              console.log('Skipping non-label update comment');
+              return;
+            }
+
+            // Get available models from catalog
+            const catalogResponse = await fetch('https://models.github.ai/catalog/models', {
+              headers: {
+                'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`
+              }
+            });
+
+            if (!catalogResponse.ok) {
+              throw new Error(`Failed to fetch model catalog: ${catalogResponse.status}`);
+            }
+
+            const catalog = await catalogResponse.json();
+            const availableModels = catalog.map(model => model.id);
+
+            // Get existing labels
+            const { data: existingLabels } = await github.rest.issues.listLabelsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+
+            const existingLabelNames = existingLabels.map(label => label.name);
+
+            // Create missing labels
+            for (const model of availableModels) {
+              if (!existingLabelNames.includes(model)) {
+                console.log(`Creating label for model: ${model}`);
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: model,
+                  color: '0366d6', // GitHub blue
+                  description: `Use the ${model} model for this conversation`
+                });
+              }
+            }
+
+            // Comment to confirm labels were updated
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `✅ Updated model labels. Available models: ${availableModels.join(', ')}`
+            });
+
       - name: Process and respond
         uses: actions/github-script@v7
         env:
