@@ -19,6 +19,8 @@ jobs:
 
       - name: Process and respond
         uses: actions/github-script@v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           script: |
             // Skip if this is a GitHub Actions bot comment
@@ -61,24 +63,39 @@ jobs:
               }
             }
 
-            const response = await fetch('https://models.github.ai/inference/chat/completions', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`
-              },
-              body: JSON.stringify({
-                messages,
-                model: 'openai/gpt-4o'
-              })
-            });
-
-            const data = await response.json();
-            const aiResponse = data.choices[0].message.content;
-
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: aiResponse
-            });
+            try {
+              const response = await fetch('https://models.github.ai/inference/chat/completions', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`
+                },
+                body: JSON.stringify({
+                  messages,
+                  model: 'openai/gpt-4o'
+                })
+              });
+              
+              if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`API request failed: ${response.status} ${errorText}`);
+              }
+              
+              const data = await response.json();
+              const aiResponse = data.choices[0].message.content;
+              
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: aiResponse
+              });
+            } catch (error) {
+              console.error('Error:', error);
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `Sorry, I encountered an error: ${error.message}`
+              });
+            }
