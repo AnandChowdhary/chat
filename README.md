@@ -2,6 +2,11 @@
 
 A GitHub Actions workflow that enables chat conversations with AI models directly in GitHub Issues. This workflow uses GitHub's AI models API to provide intelligent responses to your questions and discussions.
 
+Source:
+
+- Workflow: [`.github/workflows/chat.yml`](./.github/workflows/chat.yml)
+- System prompt: [`system-prompt.md`](./system-prompt.md)
+
 ## Features
 
 - 🤖 Chat with all available AI models from GitHub Marketplace
@@ -61,9 +66,6 @@ To see all available models, see the [repository labels](https://github.com/Anan
    - Maintains consistent label styling
    - Handles errors gracefully
    - Provides helpful error messages
-
-Workflow: [`.github/workflows/chat.yml`](./.github/workflows/chat.yml)
-System prompt: [`system-prompt.md`](./system-prompt.md)
 
 ## License
 
