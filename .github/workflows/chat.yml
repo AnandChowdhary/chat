@@ -134,7 +134,7 @@ jobs:
             const availableModels = catalog.map(model => model.id);
 
             // Determine which model to use based on labels
-            const defaultModel = 'openai/gpt-4.1';
+            const defaultModel = 'openai/gpt-5-mini';
             const modelLabel = context.payload.issue.labels.find(label => availableModels.includes(label.name));
             const requestedModel = modelLabel ? modelLabel.name : defaultModel;
 
