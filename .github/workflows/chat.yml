@@ -44,7 +44,7 @@ jobs:
             const availableModels = catalog.map(model => model.id);
 
             // Get existing labels
-            const { data: existingLabels } = await github.rest.issues.listLabelsForRepo({
+            const existingLabels = await github.paginate(github.rest.issues.listLabelsForRepo, {
               owner: context.repo.owner,
               repo: context.repo.repo
             });
@@ -132,6 +132,35 @@ jobs:
 
             const catalog = await catalogResponse.json();
             const availableModels = catalog.map(model => model.id);
+            const modelLabelColor = '0366d6'; // GitHub blue
+
+            async function ensureModelLabel(model) {
+              const existingLabels = await github.paginate(github.rest.issues.listLabelsForRepo, {
+                owner: context.repo.owner,
+                repo: context.repo.repo
+              });
+
+              if (existingLabels.some(label => label.name === model)) {
+                return;
+              }
+
+              console.log(`Creating label for default model: ${model}`);
+              try {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: model,
+                  color: modelLabelColor,
+                  description: `Use the ${model} model for this conversation`
+                });
+              } catch (error) {
+                // Another workflow run may have created the label first.
+                if (error.status !== 422) {
+                  throw error;
+                }
+                console.log(`Label already exists for model: ${model}`);
+              }
+            }
 
             // Determine which model to use based on labels
             const defaultModel = 'openai/gpt-5-mini';
@@ -140,6 +169,7 @@ jobs:
 
             // Add default model label if no model label is present
             if (!modelLabel) {
+              await ensureModelLabel(defaultModel);
               console.log(`Adding default model label: ${defaultModel}`);
               await github.rest.issues.addLabels({
                 issue_number: context.issue.number,
