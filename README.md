@@ -21,7 +21,7 @@ Source:
 
    - Open a new issue in this repository
    - Write your question or message in the issue title
-   - The workflow will automatically respond using the default model (GPT-4.1)
+   - The workflow will automatically respond using the default model (`openai/gpt-5-mini`)
 
 2. **Continue the conversation**
 
@@ -44,7 +44,8 @@ Source:
 
 The workflow supports all models available in the GitHub AI catalog, including:
 
-- `openai/gpt-4.1` (default) - Latest GPT-4 model with improved performance
+- `openai/gpt-5-mini` (default) - Fast GPT-5 model for chat responses
+- `openai/gpt-4.1` - GPT-4.1 model with strong general-purpose performance
 - `openai/gpt-4o` - OpenAI's multimodal model
 - `openai/o1` - Advanced reasoning model
 - `openai/o3` - Enhanced quality and safety model
