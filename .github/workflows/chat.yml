@@ -23,8 +23,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           script: |
+            const isLabelUpdateCommand = context.eventName === 'issue_comment' &&
+              context.payload.comment.body.trim().toLowerCase() === 'update labels';
+
             // Skip if not requested
-            if (context.eventName !== 'issue_comment' || !context.payload.comment.body.toLowerCase().includes('update labels')) {
+            if (!isLabelUpdateCommand) {
               console.log('Skipping non-label update comment');
               return;
             }
@@ -85,8 +88,17 @@ jobs:
               return;
             }
 
+            const isLabelUpdateCommand = context.eventName === 'issue_comment' &&
+              context.payload.comment.body.trim().toLowerCase() === 'update labels';
+
+            // The label update command is handled by the previous step; don't also send it to the model.
+            if (isLabelUpdateCommand) {
+              console.log('Skipping chat response for label update command');
+              return;
+            }
+
             const fs = require('fs');
-            const { data: comments } = await github.rest.issues.listComments({
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number
