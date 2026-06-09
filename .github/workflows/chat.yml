@@ -52,11 +52,12 @@ jobs:
               repo: context.repo.repo
             });
 
-            const existingLabelNames = existingLabels.map(label => label.name);
+            const existingLabelNames = new Set(existingLabels.map(label => label.name.toLowerCase()));
 
             // Create missing labels
             for (const model of availableModels) {
-              if (!existingLabelNames.includes(model)) {
+              const normalizedModel = model.toLowerCase();
+              if (!existingLabelNames.has(normalizedModel)) {
                 console.log(`Creating label for model: ${model}`);
                 await github.rest.issues.createLabel({
                   owner: context.repo.owner,
@@ -65,6 +66,7 @@ jobs:
                   color: '0366d6', // GitHub blue
                   description: `Use the ${model} model for this conversation`
                 });
+                existingLabelNames.add(normalizedModel);
               }
             }
 
